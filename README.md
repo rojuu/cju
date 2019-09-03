@@ -3,7 +3,7 @@
 A toy compiler written in C++17
 
 ## Building
-Do the following:
+Do the following (might vary per platform):
 ```
 mkdir build
 cd build
