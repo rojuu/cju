@@ -1,13 +1,7 @@
 # cju, a toy compiler
 
-A toy compiler written in C++17
+A toy compiler written in C++
 
-## Building
-Do the following (might vary per platform):
-```
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-NOTE: you need to make sure that cmake generates the project to use a compiler that supports C++17. For that you will need to refer to the [cmake documentation](https://cmake.org/documentation/) for the platform you are on.
+## Compiling
+
+Make sure you have LLVM development libraries installed on your system, then run make. Only tested on Linux, but might work on Mac. If lucky, maybe even on Windows with MinGW or WSL or something like that.
