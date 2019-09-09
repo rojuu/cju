@@ -8,9 +8,22 @@ llvm_flags="`llvm-config --cxxflags --ldflags --system-libs --libs core`"
 
 # Specifying the compile command
 src_file="src/main.cpp"
-compile_command="${cc} -g -Og ${src_file} -std=c++17 -Wall -Wextra -pedantic -Werror ${llvm_flags} -o cju"
 
-echo Starting compilation
+compiler_flags_generic="-std=c++17 -Wall -Wextra -pedantic -Werror"
+compiler_flags_release="-O3"
+compiler_flags_debug="-g -Og"
+
+if [ "$1" == "Release" ]
+then
+  compilation_type="release"
+  compiler_flags="${compiler_flags_release} ${compiler_flags_generic}"
+else
+  compilation_type="debug"
+  compiler_flags="${compiler_flags_debug} ${compiler_flags_generic}"
+fi
+compile_command="${cc} ${compiler_flags} ${src_file} ${llvm_flags} -o cju"
+
+echo Starting ${compilation_type} compilation
 # Compiling the actual program
 ${compile_command}
 
