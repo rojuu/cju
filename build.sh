@@ -15,7 +15,7 @@ echo Starting compilation
 ${compile_command}
 
 echo Exporting compile_commands.json
-# Exporting a compile_commands.json for editors, so they can have better syntax highlighting etc.
+# Exporting a compile_commands.json for editors, so they can have better intellisense features etc.
 compile_commands_json="[
 {
   \"directory\": \"${cwd}\",
