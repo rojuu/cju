@@ -8,10 +8,34 @@ struct Token
 {
 };
 
+std::vector<std::string> splitIntoLines(const std::string &fileContents)
+{
+    std::vector<std::string> result;
+
+    size_t lineStartIndex = 0;
+    size_t lineEndIndex = 0;
+    while (lineEndIndex != fileContents.npos) {
+        lineEndIndex = fileContents.find("\n", lineStartIndex); // TODO: Make work with CRLF as well
+        std::string line(fileContents, lineStartIndex, lineEndIndex - lineStartIndex);
+        if (line.size() > 0) {
+            result.push_back(line);
+        }
+        lineStartIndex = lineEndIndex + 1;
+    }
+
+    return result;
+}
+
 std::vector<Token> tokenizeFile(const std::string &fileContents)
 {
-    (void)fileContents;
+    auto lines = splitIntoLines(fileContents);
+
+    std::cout << "line count " << lines.size() << std::endl;
+    for (auto &line : lines) {
+        std::cout << line << std::endl;
+    }
     // Tokenize the file here...
+
     return {};
 }
 
@@ -41,7 +65,8 @@ int main(int argc, char **argv)
     }
 
     tokenizeFile(fileContents);
-    std::cout << fileContents << std::endl;
+
+    std::cout << "Done" << std::endl;
 
     return EXIT_SUCCESS;
 }
