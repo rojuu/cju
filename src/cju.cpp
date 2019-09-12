@@ -7,19 +7,37 @@
 namespace cju
 {
 
+/**
+ * letter = [a-zA-Z]
+ * digit = [0-9]
+ * digits = digit digit*
+ * identifier = [_ | letter](letter | digit | _).*
+ * number = (digits)+ | ((digits)+\.(digits)*)
+ * operator = + | - | * | / | > | >= | < | <= | = | == | | | || | & | && | << | >> | %
+ * parenthesis = ( | )
+ * scope = { | }
+ */
 enum class TokenType
 {
+    IDENTIFIER,
+    FRACTION,
+    NUMBER,
+    OPERATOR,
     PAREN,
-    NAME,
+    SCOPE,
 };
 
 struct Token
 {
+    TokenType type;
+    std::string value;
 };
 
-char *eatWhiteSpace()
+void eatWhiteSpace(char *&ptr)
 {
-    return 0;
+    while (*ptr == ' ') {
+        ptr++;
+    }
 }
 
 std::vector<Token> tokenizeFile(std::ifstream &file)
@@ -30,7 +48,8 @@ std::vector<Token> tokenizeFile(std::ifstream &file)
 
     std::string line;
     while (std::getline(file, line)) {
-        // char* ptr = &line[0];
+        char* ptr = &line[0];
+        eatWhiteSpace(ptr);
     }
 
     return tokens;
