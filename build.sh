@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cwd=`pwd`
+export cwd=`pwd`
 cc=clang++
 
 # Getting LLVM flags
@@ -21,7 +21,7 @@ else
   compilation_type="debug"
   compiler_flags="${compiler_flags_debug} ${compiler_flags_generic}"
 fi
-compile_command="${cc} ${compiler_flags} ${src_file} ${llvm_flags} -o cju"
+export compile_command="${cc} ${compiler_flags} ${src_file} ${llvm_flags} -o cju"
 
 echo Starting ${compilation_type} compilation
 # Compiling the actual program
@@ -29,13 +29,20 @@ ${compile_command}
 
 echo Exporting compile_commands.json
 # Exporting a compile_commands.json for editors, so they can have better intellisense features etc.
-compile_commands_json="[
-{
-  \"directory\": \"${cwd}\",
-  \"command\": \"${compile_command}\",
-  \"file\": \"${src_file}\"
-}
-]"
-echo ${compile_commands_json} > compile_commands.json
 
+export_file_to_compile_commands()
+{
+  compile_commands_json="{
+    \"directory\": \"${cwd}\",
+    \"command\": \"${compile_command}\",
+    \"file\": \""$0"\"
+  },"
+  echo ${compile_commands_json} >> compile_commands.json
+}
+export -f export_file_to_compile_commands
+
+echo "[" > compile_commands.json
+find src -type f -iname "*" -exec bash -c 'export_file_to_compile_commands "$0"' {} \;
+sed -i '$ s/.$//' compile_commands.json
+echo "]" >> compile_commands.json
 echo Done
