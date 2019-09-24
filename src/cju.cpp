@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <regex>
+#include <cctype>
 
 #include <cassert>
 
@@ -24,11 +25,12 @@ enum class TokenType
     NONE,
     IDENTIFIER,
     FRACTION,
-    NUMBER,
+    INTEGER,
     STRING_LITERAL,
     OPERATOR,
     PAREN,
     SEPARATOR,
+    SEMICOLON,
     SCOPE,
 };
 
@@ -40,8 +42,8 @@ std::string tokenTypeToString(TokenType type) {
         return "IDENTIFIER";
     case TokenType::FRACTION:
         return "FRACTION";
-    case TokenType::NUMBER:
-        return "NUMBER";
+    case TokenType::INTEGER:
+        return "INTEGER";
     case TokenType::STRING_LITERAL:
         return "STRING_LITERAL";
     case TokenType::OPERATOR:
@@ -50,6 +52,8 @@ std::string tokenTypeToString(TokenType type) {
         return "PAREN";
     case TokenType::SEPARATOR:
         return "SEPARATOR";
+    case TokenType::SEMICOLON:
+        return "SEMICOLON";
     case TokenType::SCOPE:
         return "SCOPE";
     }
@@ -72,11 +76,11 @@ void findNextWord(char *&beginPtr, char *&endPtr)
     }
 }
 
-std::vector<Token> tokenizeFile(std::ifstream &file)
+bool tokenizeFile(std::ifstream &file, std::vector<Token> &tokens)
 {
     file.seekg(0);
 
-    std::vector<Token> tokens;
+    bool inCommentBlock = false;
 
     std::string line;
     while (std::getline(file, line)) {
@@ -90,20 +94,47 @@ std::vector<Token> tokenizeFile(std::ifstream &file)
             auto end = tokenStr.end();
             // Tokenize each part accordingly
             while (begin != end) {
-        /*
-        * number = (digits)+ | ((digits)+\.(digits)*)
-        */
-        /*
-            FRACTION,
-            NUMBER,
-            STRING_LITERAL,
-            */
-           /*
-            This stuff would sound like a precompiler sort of thing:
-            comment blocks,
-            line comments
-            # defines /etc.
-           */
+                /*
+                    number = (digits)+ | ((digits)+\.(digits)*)
+                */
+                /*
+                    FRACTION,
+                    NUMBER,
+                    STRING_LITERAL,
+                */
+                /*
+                    This stuff would sound like a precompiler sort of thing:
+                    comment blocks,
+                    line comments
+                    # defines /etc.
+                */
+
+                // Check for comments
+                if (!inCommentBlock) {
+                    if (((end-begin) >= 2) && (
+                        (begin[0] == '/' && begin[1] == '*')
+                    )) {
+                        inCommentBlock = true;
+                        begin+=2;
+                        continue;
+                    } else if (
+                        ((end-begin) >= 2) && (
+                            (begin[0] == '/' && begin[1] == '/')
+                    )) {
+                        // Comment, so skip the rest of the line
+                        goto next_line;
+                    }
+                } else {
+                    if (((end-begin) >= 2) && (
+                        (begin[0] == '*' && begin[1] == '/')
+                    )) {
+                        inCommentBlock = false;
+                        begin+=2;
+                        continue;
+                    } else {
+                        goto next_line;
+                    }
+                }
 
                 std::string curStr(begin, end);
                 Token token{};
@@ -113,6 +144,10 @@ std::vector<Token> tokenizeFile(std::ifstream &file)
                     token.type = TokenType::IDENTIFIER;
                     token.value = std::string(begin, begin + matchLenght);
                     begin += matchLenght;
+                } else if (*begin == ';') {
+                    token.type = TokenType::SEMICOLON;
+                    token.value = std::string(begin, begin + 1);
+                    begin += 1;
                 } else if (*begin == '(' || *begin == ')') {
                     token.type = TokenType::PAREN;
                     token.value = std::string(begin, begin + 1);
@@ -125,6 +160,19 @@ std::vector<Token> tokenizeFile(std::ifstream &file)
                     token.type = TokenType::SEPARATOR;
                     token.value = std::string(begin, begin + 1);
                     begin += 1;
+                } else if(
+                    ((end-begin) >= 2) && (
+                          (begin[0] == '>' && begin[1] == '=') ||
+                          (begin[0] == '<' && begin[1] == '=') ||
+                          (begin[0] == '=' && begin[1] == '=') ||
+                          (begin[0] == '|' && begin[1] == '|') ||
+                          (begin[0] == '&' && begin[1] == '&') ||
+                          (begin[0] == '<' && begin[1] == '<') ||
+                          (begin[0] == '>' && begin[1] == '>')
+                )) {
+                    token.type = TokenType::OPERATOR;
+                    token.value = std::string(begin, begin + 2);
+                    begin += 2;
                 } else if(*begin == '+' ||
                           *begin == '-' ||
                           *begin == '*' ||
@@ -137,29 +185,27 @@ std::vector<Token> tokenizeFile(std::ifstream &file)
                     token.type = TokenType::OPERATOR;
                     token.value = std::string(begin, begin +1);
                     begin += 1;
-                } else if((begin[0] == '>' && begin[1] == '=') ||
-                          (begin[0] == '<' && begin[1] == '=') ||
-                          (begin[0] == '=' && begin[1] == '=') ||
-                          (begin[0] == '|' && begin[1] == '|') ||
-                          (begin[0] == '&' && begin[1] == '&') ||
-                          (begin[0] == '<' && begin[1] == '<') ||
-                          (begin[0] == '>' && begin[1] == '>')) {
-                    token.type = TokenType::OPERATOR;
-                    token.value = std::string(begin, begin + 2);
-                    begin += 2;
+                } else if (std::isalnum(*begin)) {
+                    token.type = TokenType::INTEGER;
+                    begin++;
                 } else {
-                    token.type = TokenType::NONE;
-                    ++begin;
+                    std::cout << "Unexpected token: " << *begin << std::endl;
+                    return false;
                 }
 
-                if (token.type != TokenType::NONE) {
-                    tokens.push_back(token);
-                }
+                tokens.push_back(token);
             }
         }
+
+        next_line:;
     }
 
-    return tokens;
+    if (inCommentBlock) {
+        std::cout << "Expected '*/'" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 int run(int argc, char **argv)
@@ -172,7 +218,10 @@ int run(int argc, char **argv)
         return 1;
     }
 
-    auto tokens = tokenizeFile(file);
+    std::vector<Token> tokens;
+    if (!tokenizeFile(file, tokens)) {
+        return 1;
+    }
 
     for (auto token : tokens) {
         std::cout << tokenTypeToString(token.type) << " " << token.value << std::endl;
