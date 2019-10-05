@@ -1,28 +1,11 @@
-//Line comment at the top;
+// Test file for the compiler
 
-int add(int a, int b) //line comment here
+int add(int a, int b)
 {
-    /*
-
-        block comment with stuff
-
-        slkdjf
-    */
     return a + b;
 }
-// line comment
 
-int foo(int a, int b)
-{
-    return a && b;
-}
-
-int bar(int a, int b)
-{
-    return (a << b) || (a <= b);
-}
-
-int main(void)
-{
-    return add(1, sub_numbers(3 & 1, 4));
-}
+// int main(void)
+// {
+//     return add(1, 4);
+// }

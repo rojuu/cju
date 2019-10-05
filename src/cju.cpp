@@ -4,6 +4,7 @@
 #include <vector>
 #include <regex>
 #include <cctype>
+#include <unordered_map>
 
 #include <cassert>
 
@@ -11,6 +12,45 @@
 #define LEXER_USE_ASSERT
 #define LEXER_SIZE_TYPE size_t
 #include "lexer.h"
+
+struct Argument {
+    std::string name;
+    std::string type;
+};
+
+struct PrototypeAST {
+    std::string name;
+    std::vector<Argument> arguments;
+};
+
+enum class ExprType {
+    STATEMENT,
+    VARIABLE,
+};
+
+struct Statement {
+};
+
+struct Variable {
+};
+
+struct ExprAST {
+    ExprType type;
+    union {
+        Statement statement;
+        Variable variable;
+    };
+};
+
+struct BlockAST {
+    std::vector<ExprAST> expressions;
+};
+
+struct AST {
+
+    std::unordered_map<std::string, PrototypeAST> prototypesByName;
+    std::unordered_map<std::string, BlockAST> blocksByPrototypeName;
+};
 
 namespace cju
 {
@@ -64,6 +104,39 @@ bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tok
     return true;
 }
 
+bool expectToken(const lexer_token &token, lexer_token_type tokenType) {
+    if (token.type != tokenType) {
+        std::cerr << "Unexpected token \"" << token.str << "\" on line: " << token.line << std::endl;
+        return false;
+    }
+    return true;
+}
+
+int buildFunctionAST(const std::vector<lexer_token> &tokens, size_t currentIndex, AST &ast)
+{
+    auto it = currentIndex;
+    auto &token = tokens[it];
+    if (expectToken(token, lexer_token_type::LEXER_TOKEN_NAME)) {
+    }
+
+    return 0;
+}
+
+bool buildAST(const std::vector<lexer_token> &tokens, AST &ast)
+{
+    if (tokens.size() == 0) {
+        std::cerr << "Cannot build ast, found no tokens" << std::endl;
+        return false;
+    }
+
+    int it = 0;
+    int itShift = 0;
+    itShift = buildFunctionAST(tokens, it, ast);
+    if (itShift == 0) {
+        return false;
+    }
+}
+
 int run(int argc, char **argv)
 {
     assert(argc == 2);
@@ -94,6 +167,16 @@ int run(int argc, char **argv)
                   << std::string(token.str, token.str + token.len) << " "
                   << std::endl;
     }
+
+    AST ast;
+    if (!buildAST(tokens, ast)) {
+        std::cout << "Failed to build ast for file: " << argv[1] << std::endl;
+        return 1;
+    }
+
+#if 1
+    // Print ast
+#endif
 
     std::cout << "Done" << std::endl;
 
