@@ -1,61 +1,19 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <regex>
-#include <cctype>
-#include <unordered_map>
-
-#include <cassert>
+#include "cju.h"
 
 #define LEXER_IMPLEMENTATION
-#define LEXER_USE_ASSERT
-#define LEXER_SIZE_TYPE size_t
 #include "lexer.h"
 
-struct Argument {
-    std::string name;
-    std::string type;
-};
-
-struct PrototypeAST {
-    std::string name;
-    std::vector<Argument> arguments;
-};
-
-enum class ExprType {
-    STATEMENT,
-    VARIABLE,
-};
-
-struct Statement {
-};
-
-struct Variable {
-};
-
-struct ExprAST {
-    ExprType type;
-    union {
-        Statement statement;
-        Variable variable;
-    };
-};
-
-struct BlockAST {
-    std::vector<ExprAST> expressions;
-};
-
-struct AST {
-
-    std::unordered_map<std::string, PrototypeAST> prototypesByName;
-    std::unordered_map<std::string, BlockAST> blocksByPrototypeName;
-};
+// NOTE: Right now our strategy is to leak all the memory allocated when generating our AST
+// It's just not worth iterating through the tree to deallocate everything, when the system
+// will release all our resources anyway. If there will ever be a memory pool for the AST,
+// then maybe we can release that pool when we're done with it.
+#include "ast.cpp"
 
 namespace cju
 {
 
-std::string tokenTypeToString(lexer_token_type type) {
+std::string tokenTypeToString(lexer_token_type type)
+{
     switch(type) {
     case LEXER_TOKEN_STRING:
         return "LEXER_TOKEN_STRING";
@@ -112,17 +70,18 @@ bool expectToken(const lexer_token &token, lexer_token_type tokenType) {
     return true;
 }
 
-int buildFunctionAST(const std::vector<lexer_token> &tokens, size_t currentIndex, AST &ast)
+int buildFunctionAST(const std::vector<lexer_token> &tokens, size_t currentIndex, ExprAST *&ast)
 {
     auto it = currentIndex;
     auto &token = tokens[it];
     if (expectToken(token, lexer_token_type::LEXER_TOKEN_NAME)) {
+        ast = new VariableAST("fooo", "bar");
     }
 
     return 0;
 }
 
-bool buildAST(const std::vector<lexer_token> &tokens, AST &ast)
+bool buildAST(const std::vector<lexer_token> &tokens, ExprAST *&ast)
 {
     if (tokens.size() == 0) {
         std::cerr << "Cannot build ast, found no tokens" << std::endl;
@@ -135,6 +94,8 @@ bool buildAST(const std::vector<lexer_token> &tokens, AST &ast)
     if (itShift == 0) {
         return false;
     }
+
+    return false;
 }
 
 int run(int argc, char **argv)
@@ -168,15 +129,19 @@ int run(int argc, char **argv)
                   << std::endl;
     }
 
-    AST ast;
+    ExprAST *ast;
     if (!buildAST(tokens, ast)) {
         std::cout << "Failed to build ast for file: " << argv[1] << std::endl;
         return 1;
     }
 
-#if 1
-    // Print ast
-#endif
+    std::cout << std::endl << std::endl;
+    std::cout << "------------------------------" << std::endl;
+    std::cout << "------------------------------" << std::endl;
+    std::cout << "------------------------------" << std::endl;
+    std::cout << std::endl << std::endl;
+
+    ast->print();
 
     std::cout << "Done" << std::endl;
 
