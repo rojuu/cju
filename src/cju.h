@@ -10,6 +10,8 @@
 
 #include <cassert>
 
+#include "json.hpp"
+
 #define LEXER_USE_ASSERT
 #define LEXER_SIZE_TYPE size_t
 #include "lexer.h"
