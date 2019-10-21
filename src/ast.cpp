@@ -51,8 +51,8 @@ struct PrototypeAST : ExprAST {
     {
     }
 
-    virtual nlohmann::json toJson() override {
-
+    virtual nlohmann::json toJson() override
+    {
         nlohmann::json json;
 
         json["name"] = name;

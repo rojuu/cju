@@ -97,16 +97,14 @@ void expectTokenEq(const lexer_token &token, const std::string &str)
     }
 }
 
-ExprAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index)
+PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &index)
 {
-    ExprAST *ast = nullptr;
-
-    // Function name
+    // Type
     auto token = &tokens[index];
     expectTokenType(*token, lexer_token_type::LEXER_TOKEN_NAME);
     std::string type = toString(*token);
 
-    // Function name
+    // Name
     token = &tokens[++index];
     expectTokenType(*token, lexer_token_type::LEXER_TOKEN_NAME);
     std::string name = toString(*token);
@@ -148,9 +146,21 @@ ExprAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index)
         }
     }
 
-    ast = new PrototypeAST(name, type, arguments);
+    PrototypeAST *proto = new PrototypeAST(name, type, arguments);
+    return proto;
+}
 
-    return ast;
+FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index)
+{
+    PrototypeAST *proto = buildPrototypeAST(tokens, index);
+
+    // TODO: Parse function body next
+    auto *token = &tokens[index];
+    std::cout << proto->name << "\n";
+    std::cout << toString(*token) << "\n";
+
+    FunctionAST *func = new FunctionAST(proto, nullptr);
+    return func;
 }
 
 ExprAST *buildAST(const std::vector<lexer_token> &tokens)
@@ -161,19 +171,28 @@ ExprAST *buildAST(const std::vector<lexer_token> &tokens)
     }
 
     int it = 0;
-    ExprAST *ast = buildFunctionAST(tokens, it);
+    FunctionAST *ast = buildFunctionAST(tokens, it);
 
     return ast;
 }
 
+void printUsage(const char* programName)
+{
+    std::cout << "Usage: " << programName << "file" << std::endl;
+}
+
 int run(int argc, char **argv)
 {
-    assert(argc == 2);
+    if (argc != 2) {
+        std::cerr << "ERROR: Wrong number or arguments" << std::endl;
+        printUsage(argv[0]);
+        return EXIT_FAILURE;
+    }
 
     std::ifstream file(argv[1]);
     if (!file.is_open()) {
         std::cerr << "Failed to open file " << argv[1];
-        return 1;
+        return EXIT_FAILURE;
     }
 
     std::string fileContents;
@@ -188,7 +207,7 @@ int run(int argc, char **argv)
     std::vector<lexer_token> tokens;
     if (!tokenizeFile(fileContents, tokens)) {
         std::cerr << "Failed to tokenize file: " << argv[1] << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     // for (auto &token : tokens) {
@@ -200,7 +219,7 @@ int run(int argc, char **argv)
     ExprAST *ast = buildAST(tokens);
     if (!ast) {
         std::cerr << "Failed to build ast for file: " << argv[1] << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     auto json = ast->toJson();
@@ -208,7 +227,7 @@ int run(int argc, char **argv)
 
     std::cout << "Done" << std::endl;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 } // namespace cju
