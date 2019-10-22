@@ -76,9 +76,15 @@ void logUnexpectedTokenAndExit(const lexer_token &token)
     exit(EXIT_FAILURE);
 }
 
-void expectTokenType(const lexer_token &token, lexer_token_type tokenType)
+bool tokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
 {
-    if (token.type != tokenType) {
+    bool result = token.type == tokenType;
+    return result;
+}
+
+void expectTokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
+{
+    if (!tokenTypeEq(token, tokenType)) {
         logUnexpectedTokenAndExit(token);
     }
 }
@@ -100,18 +106,18 @@ void expectTokenEq(const lexer_token &token, const std::string &str)
 PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &index)
 {
     // Type
-    auto token = &tokens[index];
-    expectTokenType(*token, lexer_token_type::LEXER_TOKEN_NAME);
+    auto *token = &tokens[index];
+    expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
     std::string type = toString(*token);
 
     // Name
     token = &tokens[++index];
-    expectTokenType(*token, lexer_token_type::LEXER_TOKEN_NAME);
+    expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
     std::string name = toString(*token);
 
     // Open paren
     token = &tokens[++index];
-    expectTokenType(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+    expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
     expectTokenEq(*token, "(");
 
     std::vector<PrototypeAST::Argument> arguments;
@@ -125,7 +131,7 @@ PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &ind
         PrototypeAST::Argument arg;
 
         // Param
-        expectTokenType(*token, lexer_token_type::LEXER_TOKEN_NAME);
+        expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
         if (tokenEq(*token, "int") ||
             tokenEq(*token, "float")) {
             arg.type = toString(*token);
@@ -134,13 +140,13 @@ PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &ind
         }
 
         token = &tokens[++index];
-        expectTokenType(*token, lexer_token_type::LEXER_TOKEN_NAME);
+        expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
         arg.name = toString(*token);
 
         arguments.push_back(arg);
 
         token = &tokens[index + 1];
-        expectTokenType(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+        expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
         if (tokenEq(*token, ",")) {
             ++index;
         }
@@ -154,12 +160,27 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
 {
     PrototypeAST *proto = buildPrototypeAST(tokens, index);
 
-    // TODO: Parse function body next
     auto *token = &tokens[index];
-    std::cout << proto->name << "\n";
-    std::cout << toString(*token) << "\n";
+    expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+    expectTokenEq(*token, "{");
 
-    FunctionAST *func = new FunctionAST(proto, nullptr);
+    BinaryOpAST *cur = new BinaryOpAST();
+    BinaryOpAST *root = cur;
+    for (;;) {
+        token = &tokens[++index];
+        if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION) && tokenEq(*token, ";")) {
+            auto *nextToken = &tokens[index + 1];
+            if (tokenTypeEq(*nextToken, lexer_token_type::LEXER_TOKEN_PUNCTUATION) && tokenEq(*nextToken, "}")) {
+                ++index;
+                break;
+            } else {
+                continue;
+            }
+        }
+    }
+
+    assert(root && root->lhs && root->rhs && !"root cannot have null members");
+    FunctionAST *func = new FunctionAST(proto, root);
     return func;
 }
 

@@ -27,13 +27,16 @@ struct VariableAST : ExprAST {
 };
 
 struct BinaryOpAST : ExprAST {
+    BinaryOpAST()
+    {
+    }
     BinaryOpAST(char op, ExprAST *lhs, ExprAST *rhs)
         : op(op)
         , lhs(lhs)
         , rhs(rhs)
     {
     }
-    char op;
+    char op; // if '\0' acts as a statment (e.g. return)
     ExprAST *lhs;
     ExprAST *rhs;
 };
