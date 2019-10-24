@@ -1,4 +1,4 @@
-#include "cju.cpp"
+#include "cju.hpp"
 
 int main(int argc, char **argv)
 {

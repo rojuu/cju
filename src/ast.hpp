@@ -1,7 +1,9 @@
-#include "cju.h"
+#include "common.h"
 
 namespace cju
 {
+
+// TODO: IMPLEMENT JSONS NEXT, THEN COMPILE AND TEST
 
 struct ExprAST {
     ExprAST() = default;
@@ -23,22 +25,40 @@ struct VariableAST : ExprAST {
     }
 
     std::string name;
-    std::string type;
+    std::string type; // If type is empty, we should've declared the variable already and it is unkown in this context
 };
 
 struct BinaryOpAST : ExprAST {
     BinaryOpAST()
     {
     }
-    BinaryOpAST(char op, ExprAST *lhs, ExprAST *rhs)
+    BinaryOpAST(std::string op, ExprAST *lhs, ExprAST *rhs)
         : op(op)
         , lhs(lhs)
         , rhs(rhs)
     {
     }
-    char op; // if '\0' acts as a statment (e.g. return)
+    std::string op;
     ExprAST *lhs;
     ExprAST *rhs;
+};
+
+struct StatementAST : ExprAST {
+    StatementAST(std::string statement, ExprAST *rhs)
+        : statement(statement)
+        , rhs(rhs)
+    {
+    }
+    std::string statement;
+    ExprAST *rhs;
+};
+
+struct NumberAST : ExprAST {
+    NumberAST(float value)
+        : value(value)
+    {
+    }
+    float value;
 };
 
 struct PrototypeAST : ExprAST {
@@ -77,15 +97,28 @@ struct PrototypeAST : ExprAST {
     std::vector<Argument> arguments;
 };
 
+struct BlockAST : ExprAST {
+    BlockAST()
+    {
+    }
+
+    void push(ExprAST *expr)
+    {
+        exprs.push_back(expr);
+    }
+
+    std::vector<ExprAST *> exprs;
+};
+
 struct FunctionAST : ExprAST {
-    FunctionAST(PrototypeAST *proto, ExprAST *body)
+    FunctionAST(PrototypeAST *proto, BlockAST *body)
         : proto(proto)
         , body(body)
     {
     }
 
     PrototypeAST *proto;
-    ExprAST *body;
+    BlockAST *body;
 };
 
 } // namespace cju

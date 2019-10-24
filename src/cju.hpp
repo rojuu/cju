@@ -1,4 +1,4 @@
-#include "cju.h"
+#include "common.h"
 
 #define LEXER_IMPLEMENTATION
 #include "lexer.h"
@@ -7,7 +7,7 @@
 // It's just not worth iterating through the tree to deallocate everything, when the system
 // will release all our resources anyway. If there will ever be a memory pool for the AST,
 // then maybe we can release that pool when we're done with it.
-#include "ast.cpp"
+#include "ast.hpp"
 
 namespace cju
 {
@@ -103,6 +103,21 @@ void expectTokenEq(const lexer_token &token, const std::string &str)
     }
 }
 
+bool tokenIsAType(const lexer_token &token)
+{
+    bool isName = tokenTypeEq(token, lexer_token_type::LEXER_TOKEN_NAME);
+    bool typeNameMatches = tokenEq(token, "int") || tokenEq(token, "float");
+    bool result = isName && typeNameMatches;
+    return result;
+}
+
+void expectTokenIsAType(const lexer_token &token)
+{
+    if (!tokenIsAType(token)) {
+        logUnexpectedTokenAndExit(token);
+    }
+}
+
 PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &index)
 {
     // Type
@@ -132,8 +147,7 @@ PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &ind
 
         // Param
         expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
-        if (tokenEq(*token, "int") ||
-            tokenEq(*token, "float")) {
+        if (tokenIsAType(*token)) {
             arg.type = toString(*token);
         } else {
             logUnexpectedTokenAndExit(*token);
@@ -164,8 +178,7 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
     expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
     expectTokenEq(*token, "{");
 
-    BinaryOpAST *cur = new BinaryOpAST();
-    BinaryOpAST *root = cur;
+    BlockAST *block = new BlockAST();
     for (;;) {
         token = &tokens[++index];
         if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION) && tokenEq(*token, ";")) {
@@ -177,10 +190,57 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
                 continue;
             }
         }
+
+        if (tokenIsAType(*token)) {
+            std::string type = toString(*token);
+            token = &tokens[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+            auto *variable = new VariableAST(type, toString(*token));
+
+            token = &tokens[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+            expectTokenEq(*token, "=");
+
+            token = &token[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER);
+            auto *lhs = new NumberAST(token->value.f);
+
+            token = &token[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+            std::string op = toString(*token);
+
+            token = &token[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER);
+            auto *rhs = new NumberAST(token->value.f);
+
+            BinaryOpAST *rvalue;
+            if (op == "+") {
+                rvalue = new BinaryOpAST("+", lhs, rhs);
+            } else {
+                std::cerr << "Unexpected op " << op << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            auto *bop = new BinaryOpAST("=", variable, rvalue);
+            block->push(bop);
+
+            auto *nextToken = &token[index + 1];
+            expectTokenTypeEq(*nextToken, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+            expectTokenEq(*nextToken, ";");
+
+            continue;
+        }
+
+        if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME) && tokenEq(*token, "return")) {
+            token = &token[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+            auto *bop = new StatementAST("return", new VariableAST(toString(*token), ""));
+            block->push(bop);
+            continue;
+        }
     }
 
-    assert(root && root->lhs && root->rhs && !"root cannot have null members");
-    FunctionAST *func = new FunctionAST(proto, root);
+    FunctionAST *func = new FunctionAST(proto, block);
     return func;
 }
 
