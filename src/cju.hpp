@@ -68,12 +68,12 @@ std::string toString(const lexer_token &token)
     return result;
 }
 
-void throwUnexpectedToken(const lexer_token &token)
+void logUnexpectedTokenAndExit(const lexer_token &token)
 {
-    std::stringstream ss;
-    ss << "Unexpected token \"" << toString(token)
-       << "\" on line: " << token.line;
-    throw std::runtime_error(ss.str());
+    std::cerr << "Unexpected token \"" << toString(token)
+              << "\" on line: " << token.line
+              << std::endl;
+    exit(EXIT_FAILURE);
 }
 
 bool tokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
@@ -85,7 +85,7 @@ bool tokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
 void expectTokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
 {
     if (!tokenTypeEq(token, tokenType)) {
-        throwUnexpectedToken(token);
+        logUnexpectedTokenAndExit(token);
     }
 }
 
@@ -99,7 +99,7 @@ bool tokenEq(const lexer_token &token, const std::string &str)
 void expectTokenEq(const lexer_token &token, const std::string &str)
 {
     if (!tokenEq(token, str)) {
-        throwUnexpectedToken(token);
+        logUnexpectedTokenAndExit(token);
     }
 }
 
@@ -114,7 +114,7 @@ bool tokenIsAType(const lexer_token &token)
 void expectTokenIsAType(const lexer_token &token)
 {
     if (!tokenIsAType(token)) {
-        throwUnexpectedToken(token);
+        logUnexpectedTokenAndExit(token);
     }
 }
 
@@ -150,7 +150,7 @@ PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &ind
         if (tokenIsAType(*token)) {
             arg.type = toString(*token);
         } else {
-            throwUnexpectedToken(*token);
+            logUnexpectedTokenAndExit(*token);
         }
 
         token = &tokens[++index];
@@ -217,9 +217,8 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
             if (op == "+") {
                 rvalue = new BinaryOpAST("+", lhs, rhs);
             } else {
-                std::stringstream ss;
-                ss << "Unexpected op " << op << std::endl;
-                throw std::runtime_error(ss.str());
+                std::cerr << "Unexpected op " << op << std::endl;
+                exit(EXIT_FAILURE);
             }
 
             auto *bop = new BinaryOpAST("=", variable, rvalue);
@@ -298,18 +297,18 @@ int run(int argc, char **argv)
     //               << std::endl;
     // }
 
-    try {
-        ExprAST *ast = buildAST(tokens);
-
-        auto json = ast->toJson();
-        std::cout << json << std::endl;
-
-        std::cout << "Done" << std::endl;
-        return EXIT_SUCCESS;
-    } catch (std::exception e) {
-        std::cerr << "Failed to build ast: " << e.what() << std::endl;
+    ExprAST *ast = buildAST(tokens);
+    if (!ast) {
+        std::cerr << "Failed to build ast for file: " << argv[1] << std::endl;
         return EXIT_FAILURE;
     }
+
+    auto json = ast->toJson();
+    std::cout << json << std::endl;
+
+    std::cout << "Done" << std::endl;
+
+    return EXIT_SUCCESS;
 }
 
 } // namespace cju
