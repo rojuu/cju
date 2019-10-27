@@ -1,3 +1,4 @@
 .vscode
 /cju
 /compile_commands.json
+/output.json

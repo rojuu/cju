@@ -3,15 +3,14 @@
 namespace cju
 {
 
-// TODO: IMPLEMENT JSONS NEXT, THEN COMPILE AND TEST
-
 struct ExprAST {
     ExprAST() = default;
     virtual ~ExprAST() = default;
     ExprAST(const ExprAST &) = delete;
     ExprAST &operator=(const ExprAST &) = delete;
 
-    virtual nlohmann::json toJson() {
+    virtual nlohmann::json toJson()
+    {
         std::cerr << "toJson not implemented" << std::endl;
         return {};
     }
@@ -22,6 +21,16 @@ struct VariableAST : ExprAST {
         : name(name)
         , type(type)
     {
+    }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["name"] = name;
+        json["type"] = type;
+
+        return json;
     }
 
     std::string name;
@@ -38,6 +47,18 @@ struct BinaryOpAST : ExprAST {
         , rhs(rhs)
     {
     }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["op"] = op;
+        json["lhs"] = lhs->toJson();
+        json["rhs"] = rhs->toJson();
+
+        return json;
+    }
+
     std::string op;
     ExprAST *lhs;
     ExprAST *rhs;
@@ -49,6 +70,17 @@ struct StatementAST : ExprAST {
         , rhs(rhs)
     {
     }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["statement"] = statement;
+        json["rhs"] = rhs->toJson();
+
+        return json;
+    }
+
     std::string statement;
     ExprAST *rhs;
 };
@@ -58,6 +90,16 @@ struct NumberAST : ExprAST {
         : value(value)
     {
     }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["value"] = value;
+
+        return json;
+    }
+
     float value;
 };
 
@@ -83,10 +125,10 @@ struct PrototypeAST : ExprAST {
 
         auto &args = json["arguments"];
         for (auto &arg : arguments) {
-            nlohmann::json json_arg;
-            json_arg["name"] = arg.name;
-            json_arg["type"] = arg.type;
-            args.push_back(json_arg);
+            nlohmann::json argJson;
+            argJson["name"] = arg.name;
+            argJson["type"] = arg.type;
+            args.push_back(argJson);
         }
 
         return json;
@@ -107,6 +149,20 @@ struct BlockAST : ExprAST {
         exprs.push_back(expr);
     }
 
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        auto &exprsJson = json["exprs"];
+        for (auto *expr : exprs) {
+            nlohmann::json exprJson;
+            exprJson = expr->toJson();
+            exprsJson.push_back(exprJson);
+        }
+
+        return json;
+    }
+
     std::vector<ExprAST *> exprs;
 };
 
@@ -115,6 +171,16 @@ struct FunctionAST : ExprAST {
         : proto(proto)
         , body(body)
     {
+    }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["proto"] = proto->toJson();
+        json["body"] = body->toJson();
+
+        return json;
     }
 
     PrototypeAST *proto;

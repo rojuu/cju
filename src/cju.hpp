@@ -64,7 +64,17 @@ bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tok
 
 std::string toString(const lexer_token &token)
 {
-    std::string result = std::string(token.str, token.len);
+    std::string result;
+    switch(token.type) {
+    case lexer_token_type::LEXER_TOKEN_NUMBER:
+        result = std::to_string(token.value.f);
+    case lexer_token_type::LEXER_TOKEN_STRING:
+    case lexer_token_type::LEXER_TOKEN_LITERAL:
+    case lexer_token_type::LEXER_TOKEN_NAME:
+    case lexer_token_type::LEXER_TOKEN_PUNCTUATION:
+        result = std::string(token.str, token.len);
+        break;
+    }
     return result;
 }
 
@@ -201,17 +211,27 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
             expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
             expectTokenEq(*token, "=");
 
-            token = &token[++index];
-            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER);
-            auto *lhs = new NumberAST(token->value.f);
+            token = &tokens[++index];
+            ExprAST *lhs = nullptr;
+            if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER)) {
+                lhs = new NumberAST(token->value.f);
+            } else {
+                expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+                lhs = new VariableAST(toString(*token), "");
+            }
 
-            token = &token[++index];
+            token = &tokens[++index];
             expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
             std::string op = toString(*token);
 
-            token = &token[++index];
-            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER);
-            auto *rhs = new NumberAST(token->value.f);
+            token = &tokens[++index];
+            ExprAST *rhs = nullptr;
+            if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER)) {
+                rhs = new NumberAST(token->value.f);
+            } else {
+                expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+                rhs = new VariableAST(toString(*token), "");
+            }
 
             BinaryOpAST *rvalue;
             if (op == "+") {
@@ -224,7 +244,7 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
             auto *bop = new BinaryOpAST("=", variable, rvalue);
             block->push(bop);
 
-            auto *nextToken = &token[index + 1];
+            auto *nextToken = &tokens[index + 1];
             expectTokenTypeEq(*nextToken, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
             expectTokenEq(*nextToken, ";");
 
@@ -232,7 +252,7 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
         }
 
         if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME) && tokenEq(*token, "return")) {
-            token = &token[++index];
+            token = &tokens[++index];
             expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
             auto *bop = new StatementAST("return", new VariableAST(toString(*token), ""));
             block->push(bop);
@@ -305,6 +325,11 @@ int run(int argc, char **argv)
 
     auto json = ast->toJson();
     std::cout << json << std::endl;
+
+    std::ofstream outputFile("output.json");
+    outputFile << json;
+    outputFile.flush();
+    outputFile.close();
 
     std::cout << "Done" << std::endl;
 
