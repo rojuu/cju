@@ -30,19 +30,19 @@ std::string tokenTypeToString(lexer_token_type type)
 
 void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, const char *msg)
 {
-    std::string errorOutput;
+    std::stringstream errorOutput;
     switch(logLevel) {
     case LEXER_WARNING:
-        errorOutput+="LEXER WARNING ";
+        errorOutput << "LEXER WARNING ";
     break;
     case LEXER_ERROR:
-        errorOutput+="LEXER ERROR ";
+        errorOutput << "LEXER ERROR ";
     break;
     }
-    errorOutput+="on line ";
-    errorOutput+=line;
-    errorOutput+=msg;
-    std::cerr << errorOutput << std::endl;
+    errorOutput << "on line ";
+    errorOutput << line;
+    errorOutput << msg;
+    std::cerr << errorOutput.str() << std::endl;
 }
 
 bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tokens)
