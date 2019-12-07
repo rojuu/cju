@@ -7,6 +7,8 @@
 #include <regex>
 #include <cctype>
 #include <unordered_map>
+#include <variant>
+#include <cstdint>
 
 #include <cassert>
 

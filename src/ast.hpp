@@ -1,7 +1,27 @@
 #include "common.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
+#pragma GCC diagnostic pop
+
 namespace cju
 {
+
+static llvm::LLVMContext llvmContext;
+static llvm::IRBuilder<> llvmBuilder(llvmContext);
+static std::unique_ptr<llvm::Module> llvmModule;
+static std::map<std::string, llvm::Value *> llvmNamedValues;
 
 struct ExprAST {
     ExprAST() = default;
@@ -9,11 +29,37 @@ struct ExprAST {
     ExprAST(const ExprAST &) = delete;
     ExprAST &operator=(const ExprAST &) = delete;
 
-    virtual nlohmann::json toJson()
+    virtual nlohmann::json toJson() = 0;
+    virtual llvm::Value *codeGen() { return nullptr; }
+
+    static void logError(const std::string &msg)
     {
-        std::cerr << "toJson not implemented" << std::endl;
-        return {};
+        std::cerr << msg << std::endl;
     }
+};
+
+struct NumberAST : ExprAST {
+    NumberAST(float value)
+        : value(value)
+    {
+    }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["value"] = value;
+
+        return json;
+    }
+
+    virtual llvm::Value *codeGen() override
+    {
+        llvm::Value *result = llvm::ConstantFP::get(llvmContext, llvm::APFloat(value));
+        return result;
+    }
+
+    float value;
 };
 
 struct VariableAST : ExprAST {
@@ -31,6 +77,15 @@ struct VariableAST : ExprAST {
         json["type"] = type;
 
         return json;
+    }
+
+    virtual llvm::Value *codeGen() override
+    {
+        llvm::Value *result = llvmNamedValues[name];
+        if (!result) {
+            logError("Unknown variable name");
+        }
+        return result;
     }
 
     std::string name;
@@ -59,6 +114,30 @@ struct BinaryOpAST : ExprAST {
         return json;
     }
 
+    virtual llvm::Value *codeGen() override
+    {
+        llvm::Value *l = lhs->codeGen();
+        llvm::Value *r = rhs->codeGen();
+        if (!l || !r) {
+            return nullptr;
+        }
+
+        llvm::Value *result {};
+        if (op == "+") {
+            result = llvmBuilder.CreateFAdd(r, r, "addtmp");
+        } else if (op == "-") {
+            result = llvmBuilder.CreateFSub(r, r, "subtmp");
+        } else if (op == "*") {
+            result = llvmBuilder.CreateFMul(r, r, "multmp");
+        } else if (op == "/") {
+            result = llvmBuilder.CreateFDiv(r, r, "divtmp");
+        } else {
+            logError("Unsupported op " + op);
+        }
+
+        return result;
+    }
+
     std::string op;
     ExprAST *lhs;
     ExprAST *rhs;
@@ -83,24 +162,6 @@ struct StatementAST : ExprAST {
 
     std::string statement;
     ExprAST *rhs;
-};
-
-struct NumberAST : ExprAST {
-    NumberAST(float value)
-        : value(value)
-    {
-    }
-
-    virtual nlohmann::json toJson() override
-    {
-        nlohmann::json json;
-
-        json["value"] = value;
-
-        return json;
-    }
-
-    float value;
 };
 
 struct PrototypeAST : ExprAST {
