@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 export cwd=`pwd`
 cc=clang++
