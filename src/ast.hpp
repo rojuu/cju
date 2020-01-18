@@ -28,6 +28,8 @@ struct ExprAST {
     virtual ~ExprAST() = default;
     ExprAST(const ExprAST &) = delete;
     ExprAST &operator=(const ExprAST &) = delete;
+    ExprAST(const ExprAST &&) = delete;
+    ExprAST &operator=(const ExprAST &&) = delete;
 
     virtual nlohmann::json toJson() = 0;
     virtual llvm::Value *codeGen() { return nullptr; }
@@ -114,6 +116,22 @@ struct BinaryOpAST : ExprAST {
         return json;
     }
 
+    llvm::Value *handleAssignment(VariableAST *l, NumberAST *r)
+    {
+        if (l->type == "float") {
+            if (llvmNamedValues.find(l->name) != llvmNamedValues.end()) {
+                logError("Named value " + l->name + "already exists");
+                return nullptr;
+            }
+            llvm::Value *val = r->codeGen();
+            llvmNamedValues[l->name] = val;
+            return val;
+        } else {
+            logError("Unsupported variable type " + l->type);
+            return nullptr;
+        }
+    }
+
     virtual llvm::Value *codeGen() override
     {
         llvm::Value *l = lhs->codeGen();
@@ -124,15 +142,23 @@ struct BinaryOpAST : ExprAST {
 
         llvm::Value *result {};
         if (op == "+") {
-            result = llvmBuilder.CreateFAdd(r, r, "addtmp");
+            result = llvmBuilder.CreateFAdd(l, r, "addtmp");
         } else if (op == "-") {
-            result = llvmBuilder.CreateFSub(r, r, "subtmp");
+            result = llvmBuilder.CreateFSub(l, r, "subtmp");
         } else if (op == "*") {
-            result = llvmBuilder.CreateFMul(r, r, "multmp");
+            result = llvmBuilder.CreateFMul(l, r, "multmp");
         } else if (op == "/") {
-            result = llvmBuilder.CreateFDiv(r, r, "divtmp");
+            result = llvmBuilder.CreateFDiv(l, r, "divtmp");
+        } else if (op == "=") {
+            auto *ls = dynamic_cast<VariableAST *>(lhs);
+            auto *rs = dynamic_cast<NumberAST *>(rhs);
+            if (!ls || !rs) {
+                return nullptr;
+            }
+            return handleAssignment(ls, rs);
         } else {
             logError("Unsupported op " + op);
+            return nullptr;
         }
 
         return result;
