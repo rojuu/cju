@@ -279,7 +279,7 @@ ExprAST *buildAST(const std::vector<lexer_token> &tokens)
 
 void printUsage(const char* programName)
 {
-    std::cout << "Usage: " << programName << "file" << std::endl;
+    std::cout << "Usage: " << programName << "[file]" << std::endl;
 }
 
 int run(int argc, char **argv)

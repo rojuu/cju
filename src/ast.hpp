@@ -21,7 +21,7 @@ namespace cju
 static llvm::LLVMContext llvmContext;
 static llvm::IRBuilder<> llvmBuilder(llvmContext);
 static std::unique_ptr<llvm::Module> llvmModule;
-static std::map<std::string, llvm::Value *> llvmNamedValues;
+static std::unordered_map<std::string, llvm::Value *> llvmNamedValues; // TODO: Support scopes instead of having this be global
 
 struct ExprAST {
     ExprAST() = default;
@@ -34,13 +34,13 @@ struct ExprAST {
     virtual nlohmann::json toJson() = 0;
     virtual llvm::Value *codeGen() { return nullptr; }
 
-    static void logError(const std::string &msg)
+    virtual void logError(const std::string &msg)
     {
-        std::cerr << msg << std::endl;
+        std::cerr << "[ERROR] " << typeid(*this).name() << ": " << msg << std::endl;
     }
 };
 
-struct NumberAST : ExprAST {
+struct NumberAST : public ExprAST {
     NumberAST(float value)
         : value(value)
     {
@@ -64,7 +64,7 @@ struct NumberAST : ExprAST {
     float value;
 };
 
-struct VariableAST : ExprAST {
+struct VariableAST : public ExprAST {
     VariableAST(const std::string &name, const std::string type)
         : name(name)
         , type(type)
@@ -74,6 +74,7 @@ struct VariableAST : ExprAST {
     virtual nlohmann::json toJson() override
     {
         nlohmann::json json;
+        logError("test");
 
         json["name"] = name;
         json["type"] = type;
@@ -81,7 +82,7 @@ struct VariableAST : ExprAST {
         return json;
     }
 
-    virtual llvm::Value *codeGen() override
+    llvm::Value *genUsageCode()
     {
         llvm::Value *result = llvmNamedValues[name];
         if (!result) {
@@ -90,11 +91,25 @@ struct VariableAST : ExprAST {
         return result;
     }
 
+    llvm::Value *genAssignmentCode()
+    {
+        return nullptr;
+    }
+
+    virtual llvm::Value *codeGen() override
+    {
+        if (type.empty()) {
+            return genUsageCode();
+        } else {
+            return genAssignmentCode();
+        }
+    }
+
     std::string name;
     std::string type; // If type is empty, we should've declared the variable already and it is unkown in this context
 };
 
-struct BinaryOpAST : ExprAST {
+struct BinaryOpAST : public ExprAST {
     BinaryOpAST()
     {
     }
@@ -169,7 +184,7 @@ struct BinaryOpAST : ExprAST {
     ExprAST *rhs;
 };
 
-struct StatementAST : ExprAST {
+struct StatementAST : public ExprAST {
     StatementAST(std::string statement, ExprAST *rhs)
         : statement(statement)
         , rhs(rhs)
@@ -190,7 +205,32 @@ struct StatementAST : ExprAST {
     ExprAST *rhs;
 };
 
-struct PrototypeAST : ExprAST {
+struct CallAST : public ExprAST {
+    CallAST(std::vector<std::string> callee, std::vector<ExprAST *> args)
+        : callee(callee)
+        , args(args)
+    {
+    }
+
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
+
+        json["callee"] = callee;
+
+        auto &jsonArgs = json["args"];
+        for (auto &arg : args) {
+            jsonArgs.push_back(arg->toJson());
+        }
+
+        return json;
+    }
+
+    std::vector<std::string> callee;
+    std::vector<ExprAST *> args;
+};
+
+struct PrototypeAST : public ExprAST {
     struct Argument {
         std::string name;
         std::string type;
@@ -226,7 +266,7 @@ struct PrototypeAST : ExprAST {
     std::vector<Argument> arguments;
 };
 
-struct BlockAST : ExprAST {
+struct BlockAST : public ExprAST {
     BlockAST()
     {
     }
@@ -253,7 +293,7 @@ struct BlockAST : ExprAST {
     std::vector<ExprAST *> exprs;
 };
 
-struct FunctionAST : ExprAST {
+struct FunctionAST : public ExprAST {
     FunctionAST(PrototypeAST *proto, BlockAST *body)
         : proto(proto)
         , body(body)

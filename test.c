@@ -1,8 +1,8 @@
 // Test file for the compiler
 
-int add(int a, int b)
+float add(float a, float b)
 {
-    int result = a + b;
+    float result = a + b;
     return result;
 }
 

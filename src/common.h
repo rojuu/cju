@@ -10,6 +10,8 @@
 #include <variant>
 #include <cstdint>
 
+#include <typeinfo>
+
 #include <cassert>
 
 #include "json.hpp"
