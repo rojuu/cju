@@ -32,7 +32,7 @@ struct ExprAST {
     ExprAST &operator=(const ExprAST &&) = delete;
 
     virtual nlohmann::json toJson() = 0;
-    virtual llvm::Value *codeGen() { return nullptr; }
+    virtual llvm::Value *codeGen() = 0;
 
     virtual void logError(const std::string &msg)
     {
@@ -201,6 +201,11 @@ struct StatementAST : public ExprAST {
         return json;
     }
 
+    virtual llvm::Value* codeGen() override
+    {
+        return nullptr; //TODO: How to return stuff? I need to figure this out
+    }
+
     std::string statement;
     ExprAST *rhs;
 };
@@ -343,6 +348,11 @@ struct BlockAST : public ExprAST {
         return json;
     }
 
+    virtual llvm::Value *codeGen() override
+    {
+        return nullptr; //TODO: How to do this?
+    }
+
     std::vector<ExprAST *> exprs;
 };
 
@@ -394,7 +404,7 @@ struct FunctionAST : public ExprAST {
     }
 
     PrototypeAST *proto;
-    ExprAST *body;
+    BlockAST *body;
 };
 
 } // namespace cju

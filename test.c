@@ -2,8 +2,8 @@
 
 float add(float a, float b)
 {
-    float result = a + b;
-    return result;
+    // float result = a + b;
+    return a + b;
 }
 
 // int main(void)
