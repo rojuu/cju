@@ -206,7 +206,7 @@ struct StatementAST : public ExprAST {
 };
 
 struct CallAST : public ExprAST {
-    CallAST(std::vector<std::string> callee, std::vector<ExprAST *> args)
+    CallAST(std::string callee, std::vector<ExprAST *> args)
         : callee(callee)
         , args(args)
     {
@@ -226,7 +226,31 @@ struct CallAST : public ExprAST {
         return json;
     }
 
-    std::vector<std::string> callee;
+    virtual llvm::Value *codeGen() override
+    {
+        llvm::Function *func = llvmModule->getFunction(callee);
+        if (!func) {
+            logError("Unknown function referenced");
+            return nullptr;
+        }
+
+        if (func->arg_size() != args.size()) {
+            logError("Incorrect number of arguments passed");
+            return nullptr;
+        }
+
+        std::vector<llvm::Value *> argsv;
+        for (unsigned i = 0, e = args.size(); i != e; ++i) {
+            argsv.push_back(args[i]->codeGen());
+            if (!argsv.back()) {
+                return nullptr;
+            }
+        }
+
+        return llvmBuilder.CreateCall(func, argsv, "calltmp");
+    }
+
+    std::string callee;
     std::vector<ExprAST *> args;
 };
 
@@ -236,10 +260,10 @@ struct PrototypeAST : public ExprAST {
         std::string type;
     };
 
-    PrototypeAST(const std::string &name, const std::string &type, const std::vector<Argument> &arguments)
+    PrototypeAST(const std::string &name, const std::string &type, const std::vector<Argument> &args)
         : name(name)
         , type(type)
-        , arguments(arguments)
+        , args(args)
     {
     }
 
@@ -250,20 +274,49 @@ struct PrototypeAST : public ExprAST {
         json["name"] = name;
         json["type"] = type;
 
-        auto &args = json["arguments"];
-        for (auto &arg : arguments) {
+        auto &argsJson = json["arguments"];
+        for (auto &arg : args) {
             nlohmann::json argJson;
             argJson["name"] = arg.name;
             argJson["type"] = arg.type;
-            args.push_back(argJson);
+            argsJson.push_back(argJson);
         }
 
         return json;
     }
 
+    virtual llvm::Function *codeGen() override
+    {
+        if (type != "float") {
+            logError("Unsupported function return type");
+            return nullptr;
+        }
+
+        for (auto &arg : args) {
+            if (arg.type != "float") {
+                logError("Unsupported function arg type");
+                return nullptr;
+            }
+        }
+
+        std::vector<llvm::Type *> argTypes(args.size(), llvm::Type::getFloatTy(llvmContext));
+        llvm::FunctionType *funcType =
+            llvm::FunctionType::get(llvm::Type::getFloatTy(llvmContext), argTypes, false);
+
+        llvm::Function *func =
+            llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, llvmModule.get());
+
+        int i = 0;
+        for (auto &arg : func->args()) {
+            arg.setName(args[i++].name);
+        }
+
+        return func;
+    }
+
     std::string name;
     std::string type;
-    std::vector<Argument> arguments;
+    std::vector<Argument> args;
 };
 
 struct BlockAST : public ExprAST {
@@ -310,8 +363,38 @@ struct FunctionAST : public ExprAST {
         return json;
     }
 
+    virtual llvm::Value *codeGen() override
+    {
+        // First, check for an existing function from a previous 'extern' declaration.
+        llvm::Function *function = llvmModule->getFunction(proto->name);
+
+        if (!function) {
+            function = proto->codeGen();
+        }
+
+        if (!function) {
+            return nullptr;
+        }
+
+        llvm::BasicBlock *basicBlock = llvm::BasicBlock::Create(llvmContext, "entry", function);
+        llvmBuilder.SetInsertPoint(basicBlock);
+
+        llvmNamedValues.clear();
+        for (auto &Arg : function->args())
+            llvmNamedValues[Arg.getName()] = &Arg;
+
+        if (llvm::Value *retVal = body->codeGen()) {
+            llvmBuilder.CreateRet(retVal);
+            verifyFunction(*function);
+            return function;
+        }
+
+        function->eraseFromParent();
+        return nullptr;
+    }
+
     PrototypeAST *proto;
-    BlockAST *body;
+    ExprAST *body;
 };
 
 } // namespace cju
