@@ -85,7 +85,7 @@ struct VariableAST : public ExprAST {
     {
         llvm::Value *result = llvmNamedValues[name];
         if (!result) {
-            logError("Unknown variable name");
+            logError("Unknown variable name: " + name);
         }
         return result;
     }
@@ -130,7 +130,7 @@ struct BinaryOpAST : public ExprAST {
         return json;
     }
 
-    llvm::Value *handleAssignment(VariableAST *l, NumberAST *r)
+    llvm::Value *handleAssignment(VariableAST *l, ExprAST *r)
     {
         if (l->type == "float") {
             if (llvmNamedValues.find(l->name) != llvmNamedValues.end()) {
@@ -165,11 +165,10 @@ struct BinaryOpAST : public ExprAST {
             result = llvmBuilder.CreateFDiv(l, r, "divtmp");
         } else if (op == "=") {
             auto *ls = dynamic_cast<VariableAST *>(lhs);
-            auto *rs = dynamic_cast<NumberAST *>(rhs);
-            if (!ls || !rs) {
+            if (!ls || !rhs) {
                 return nullptr;
             }
-            return handleAssignment(ls, rs);
+            return handleAssignment(ls, rhs);
         } else {
             logError("Unsupported op " + op);
             return nullptr;
@@ -327,37 +326,41 @@ struct PrototypeAST : public ExprAST {
     std::vector<Argument> args;
 };
 
-// struct BlockAST : public ExprAST {
-//     BlockAST()
-//     {
-//     }
+struct BlockAST : public ExprAST {
+    BlockAST()
+    {
+    }
 
-//     void push(ExprAST *expr)
-//     {
-//         exprs.push_back(expr);
-//     }
+    void push(ExprAST *expr)
+    {
+        exprs.push_back(expr);
+    }
 
-//     virtual nlohmann::json toJson() override
-//     {
-//         nlohmann::json json;
+    virtual nlohmann::json toJson() override
+    {
+        nlohmann::json json;
 
-//         auto &exprsJson = json["exprs"];
-//         for (auto *expr : exprs) {
-//             nlohmann::json exprJson;
-//             exprJson = expr->toJson();
-//             exprsJson.push_back(exprJson);
-//         }
+        auto &exprsJson = json["exprs"];
+        for (auto *expr : exprs) {
+            nlohmann::json exprJson;
+            exprJson = expr->toJson();
+            exprsJson.push_back(exprJson);
+        }
 
-//         return json;
-//     }
+        return json;
+    }
 
-//     virtual llvm::Value *codeGen() override
-//     {
-//         return nullptr; //TODO: How to do this?
-//     }
+    virtual llvm::Value *codeGen() override
+    {
+        llvm::Value *lastValue = nullptr;
+        for (auto *expr : exprs) {
+            lastValue = expr->codeGen();
+        }
+        return lastValue;
+    }
 
-//     std::vector<ExprAST *> exprs;
-// };
+    std::vector<ExprAST *> exprs;
+};
 
 struct FunctionAST : public ExprAST {
     FunctionAST(PrototypeAST *proto, ExprAST *body)
