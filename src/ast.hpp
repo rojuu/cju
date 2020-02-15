@@ -20,7 +20,7 @@ namespace cju
 
 static llvm::LLVMContext llvmContext;
 static llvm::IRBuilder<> llvmBuilder(llvmContext);
-static std::unique_ptr<llvm::Module> llvmModule;
+static llvm::Module *llvmModule;
 static std::unordered_map<std::string, llvm::Value *> llvmNamedValues; // TODO: Support scopes instead of having this be global
 
 struct ExprAST {
@@ -74,7 +74,6 @@ struct VariableAST : public ExprAST {
     virtual nlohmann::json toJson() override
     {
         nlohmann::json json;
-        logError("test");
 
         json["name"] = name;
         json["type"] = type;
@@ -203,7 +202,12 @@ struct StatementAST : public ExprAST {
 
     virtual llvm::Value* codeGen() override
     {
-        return nullptr; //TODO: How to return stuff? I need to figure this out
+        if (statement == "return") {
+            return rhs->codeGen();
+        } else {
+            logError("Invalid statement: " + statement);
+            return nullptr;
+        }
     }
 
     std::string statement;
@@ -308,8 +312,7 @@ struct PrototypeAST : public ExprAST {
         llvm::FunctionType *funcType =
             llvm::FunctionType::get(llvm::Type::getFloatTy(llvmContext), argTypes, false);
 
-        llvm::Function *func =
-            llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, llvmModule.get());
+        llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, llvmModule);
 
         int i = 0;
         for (auto &arg : func->args()) {
@@ -324,40 +327,40 @@ struct PrototypeAST : public ExprAST {
     std::vector<Argument> args;
 };
 
-struct BlockAST : public ExprAST {
-    BlockAST()
-    {
-    }
+// struct BlockAST : public ExprAST {
+//     BlockAST()
+//     {
+//     }
 
-    void push(ExprAST *expr)
-    {
-        exprs.push_back(expr);
-    }
+//     void push(ExprAST *expr)
+//     {
+//         exprs.push_back(expr);
+//     }
 
-    virtual nlohmann::json toJson() override
-    {
-        nlohmann::json json;
+//     virtual nlohmann::json toJson() override
+//     {
+//         nlohmann::json json;
 
-        auto &exprsJson = json["exprs"];
-        for (auto *expr : exprs) {
-            nlohmann::json exprJson;
-            exprJson = expr->toJson();
-            exprsJson.push_back(exprJson);
-        }
+//         auto &exprsJson = json["exprs"];
+//         for (auto *expr : exprs) {
+//             nlohmann::json exprJson;
+//             exprJson = expr->toJson();
+//             exprsJson.push_back(exprJson);
+//         }
 
-        return json;
-    }
+//         return json;
+//     }
 
-    virtual llvm::Value *codeGen() override
-    {
-        return nullptr; //TODO: How to do this?
-    }
+//     virtual llvm::Value *codeGen() override
+//     {
+//         return nullptr; //TODO: How to do this?
+//     }
 
-    std::vector<ExprAST *> exprs;
-};
+//     std::vector<ExprAST *> exprs;
+// };
 
 struct FunctionAST : public ExprAST {
-    FunctionAST(PrototypeAST *proto, BlockAST *body)
+    FunctionAST(PrototypeAST *proto, ExprAST *body)
         : proto(proto)
         , body(body)
     {
@@ -404,7 +407,7 @@ struct FunctionAST : public ExprAST {
     }
 
     PrototypeAST *proto;
-    BlockAST *body;
+    ExprAST *body;
 };
 
 } // namespace cju

@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <variant>
 #include <cstdint>
+#include <memory>
 
 #include <typeinfo>
 

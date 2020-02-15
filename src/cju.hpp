@@ -188,7 +188,7 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
     expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
     expectTokenEq(*token, "{");
 
-    BlockAST *block = new BlockAST();
+    ExprAST *expr = nullptr;
     for (;;) {
         token = &tokens[++index];
         if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION) && tokenEq(*token, ";")) {
@@ -201,66 +201,76 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
             }
         }
 
-        if (tokenIsAType(*token)) {
-            std::string type = toString(*token);
-            token = &tokens[++index];
-            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
-            auto *variable = new VariableAST(type, toString(*token));
+        // TODO Redo this somehow. I think the "BlockAST" idea doesn't work, but we'll see
+        // if (tokenIsAType(*token)) {
+        //     std::string type = toString(*token);
+        //     token = &tokens[++index];
+        //     expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+        //     auto *variable = new VariableAST(type, toString(*token));
 
-            token = &tokens[++index];
-            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
-            expectTokenEq(*token, "=");
+        //     token = &tokens[++index];
+        //     expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+        //     expectTokenEq(*token, "=");
 
-            token = &tokens[++index];
-            ExprAST *lhs = nullptr;
-            if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER)) {
-                lhs = new NumberAST(token->value.f);
-            } else {
-                expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
-                lhs = new VariableAST(toString(*token), "");
-            }
+        //     token = &tokens[++index];
+        //     ExprAST *lhs = nullptr;
+        //     if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER)) {
+        //         lhs = new NumberAST(token->value.f);
+        //     } else {
+        //         expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+        //         lhs = new VariableAST(toString(*token), "");
+        //     }
 
-            token = &tokens[++index];
-            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
-            std::string op = toString(*token);
+        //     token = &tokens[++index];
+        //     expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+        //     std::string op = toString(*token);
 
-            token = &tokens[++index];
-            ExprAST *rhs = nullptr;
-            if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER)) {
-                rhs = new NumberAST(token->value.f);
-            } else {
-                expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
-                rhs = new VariableAST(toString(*token), "");
-            }
+        //     token = &tokens[++index];
+        //     ExprAST *rhs = nullptr;
+        //     if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NUMBER)) {
+        //         rhs = new NumberAST(token->value.f);
+        //     } else {
+        //         expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+        //         rhs = new VariableAST(toString(*token), "");
+        //     }
 
-            BinaryOpAST *rvalue;
-            if (op == "+") {
-                rvalue = new BinaryOpAST("+", lhs, rhs);
-            } else {
-                std::cerr << "Unexpected op " << op << std::endl;
-                exit(EXIT_FAILURE);
-            }
+        //     BinaryOpAST *rvalue;
+        //     if (op == "+") {
+        //         rvalue = new BinaryOpAST("+", lhs, rhs);
+        //     } else {
+        //         std::cerr << "Unexpected op " << op << std::endl;
+        //         exit(EXIT_FAILURE);
+        //     }
 
-            auto *bop = new BinaryOpAST("=", variable, rvalue);
-            block->push(bop);
+        //     auto *bop = new BinaryOpAST("=", variable, rvalue);
+        //     block->push(bop);
 
-            auto *nextToken = &tokens[index + 1];
-            expectTokenTypeEq(*nextToken, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
-            expectTokenEq(*nextToken, ";");
+        //     auto *nextToken = &tokens[index + 1];
+        //     expectTokenTypeEq(*nextToken, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+        //     expectTokenEq(*nextToken, ";");
 
-            continue;
-        }
+        //     continue;
+        // }
 
         if (tokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME) && tokenEq(*token, "return")) {
             token = &tokens[++index];
             expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
-            auto *bop = new StatementAST("return", new VariableAST(toString(*token), ""));
-            block->push(bop);
+            std::string lhs = toString(*token);
+
+            token = &tokens[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
+            std::string op = toString(*token);
+        
+            token = &tokens[++index];
+            expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
+            std::string rhs = toString(*token);
+
+            expr = new StatementAST("return", new BinaryOpAST(op, new VariableAST(lhs, ""), new VariableAST(rhs, "")));
             continue;
         }
     }
 
-    FunctionAST *func = new FunctionAST(proto, block);
+    FunctionAST *func = new FunctionAST(proto, expr);
     return func;
 }
 
@@ -317,6 +327,8 @@ int run(int argc, char **argv)
     //               << std::endl;
     // }
 
+    llvmModule = new llvm::Module("my_module", llvmContext);
+
     ExprAST *ast = buildAST(tokens);
     if (!ast) {
         std::cerr << "Failed to build ast for file: " << argv[1] << std::endl;
@@ -330,6 +342,10 @@ int run(int argc, char **argv)
     outputFile << json;
     outputFile.flush();
     outputFile.close();
+
+    ast->codeGen();
+    std::cout << "\n";
+    llvmModule->print(llvm::outs(), nullptr);
 
     std::cout << "Done" << std::endl;
 
