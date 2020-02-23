@@ -148,6 +148,14 @@ struct BinaryOpAST : public ExprAST {
 
     virtual llvm::Value *codeGen() override
     {
+        if (op == "=") {
+            auto *lhsVar = dynamic_cast<VariableAST *>(lhs);
+            if (!lhsVar || !rhs) {
+                return nullptr;
+            }
+            return handleAssignment(lhsVar, rhs);
+        }
+
         llvm::Value *l = lhs->codeGen();
         llvm::Value *r = rhs->codeGen();
         if (!l || !r) {
@@ -163,12 +171,6 @@ struct BinaryOpAST : public ExprAST {
             result = llvmBuilder.CreateFMul(l, r, "multmp");
         } else if (op == "/") {
             result = llvmBuilder.CreateFDiv(l, r, "divtmp");
-        } else if (op == "=") {
-            auto *ls = dynamic_cast<VariableAST *>(lhs);
-            if (!ls || !rhs) {
-                return nullptr;
-            }
-            return handleAssignment(ls, rhs);
         } else {
             logError("Unsupported op " + op);
             return nullptr;

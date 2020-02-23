@@ -11,7 +11,7 @@ src_file="src/main.cpp"
 
 compiler_flags_generic="-std=c++17 -Wall -Wextra -pedantic -Werror"
 compiler_flags_release="-O3"
-compiler_flags_debug="-g -Og"
+compiler_flags_debug="-g -O0"
 
 if [ "$1" == "Release" ]
 then
@@ -43,6 +43,6 @@ export -f export_file_to_compile_commands
 
 echo "[" > compile_commands.json
 find src -type f -iname "*" -exec bash -c 'export_file_to_compile_commands "$0"' {} \;
-sed -i '$ s/.$//' compile_commands.json
+sed -i '$ s/.$//' compile_commands.json # removes last character from file; in this case the trailing comma
 echo "]" >> compile_commands.json
 echo Done

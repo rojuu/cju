@@ -205,7 +205,7 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
             std::string type = toString(*token);
             token = &tokens[++index];
             expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_NAME);
-            auto *variable = new VariableAST(type, toString(*token));
+            auto *variable = new VariableAST(toString(*token), type);
 
             token = &tokens[++index];
             expectTokenTypeEq(*token, lexer_token_type::LEXER_TOKEN_PUNCTUATION);
