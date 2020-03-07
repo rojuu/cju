@@ -2,3 +2,5 @@
 /cju
 /compile_commands.json
 /output.json
+/output.o
+/a.out

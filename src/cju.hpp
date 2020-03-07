@@ -350,6 +350,52 @@ int run(int argc, char **argv)
     std::cout << "\n";
     llvmModule->print(llvm::outs(), nullptr);
 
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+    auto targetTriple = llvm::sys::getDefaultTargetTriple();
+    llvmModule->setTargetTriple(targetTriple);
+
+    std::string error;
+    auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+
+    if (!target) {
+        std::cerr << error;
+        return EXIT_FAILURE;
+    }
+
+    auto cpu = "generic";
+    auto features = "";
+
+    llvm::TargetOptions opt;
+    auto rm = llvm::Optional<llvm::Reloc::Model>();
+    auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, rm);
+
+    llvmModule->setDataLayout(targetMachine->createDataLayout());
+
+    auto filename = "output.o";
+    std::error_code ec;
+    llvm::raw_fd_ostream dest(filename, ec, llvm::sys::fs::OF_None);
+
+    if (ec) {
+        std::cerr << "Could not open file: " << ec.message();
+        return EXIT_FAILURE;
+    }
+
+    llvm::legacy::PassManager pass;
+    auto fileType = llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile;
+
+    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType)) {
+        std::cerr << "targetMachine can't emit a file of type " << fileType;
+        return 1;
+    }
+
+    pass.run(*llvmModule);
+    dest.flush();
+
     std::cout << "Done" << std::endl;
 
     return EXIT_SUCCESS;
