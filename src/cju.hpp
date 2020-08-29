@@ -28,7 +28,7 @@ std::string tokenTypeToString(lexer_token_type type)
     }
 }
 
-void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, const char *msg)
+void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, const char *msg, ...)
 {
     std::stringstream errorOutput;
     switch(logLevel) {
@@ -48,6 +48,8 @@ void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, con
 bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tokens)
 {
     lexer lexer;
+    lexer.log = lexerLogCallback;
+
     lexer_init(&lexer, fileContents.c_str(), fileContents.size(), nullptr, nullptr, nullptr);
 
     lexer_token tok;
@@ -317,6 +319,22 @@ int run(int argc, char **argv)
 
     fileContents.assign((std::istreambuf_iterator<char>(file)),
                        std::istreambuf_iterator<char>());
+
+    // Lexer doesn't like trailing new lines, so let's remove those before lexing    
+    int trailingNewLineCount = 0;
+    for (auto it = fileContents.rbegin(); it != fileContents.rend(); ++it) {
+        if (*it == '\n' || *it == '\r') {
+            trailingNewLineCount++;
+        } else {
+            break;
+        }
+    }
+    fileContents.resize(fileContents.size() - trailingNewLineCount);
+
+    if (fileContents.empty()) {
+        std::cerr << "Tried to compile empty file, exiting" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     std::vector<lexer_token> tokens;
     if (!tokenizeFile(fileContents, tokens)) {

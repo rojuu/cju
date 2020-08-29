@@ -1,3 +1,4 @@
+// Testing file used to test the compiled output.o
 #include <stdio.h>
 
 extern float add(float a, float b);
