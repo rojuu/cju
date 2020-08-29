@@ -339,7 +339,7 @@ int run(int argc, char **argv)
     }
 
     auto json = ast->toJson();
-    std::cout << json << std::endl;
+    std::cout << "AST as json:\n" << json << "\n";
 
     std::ofstream outputFile("output.json");
     outputFile << json;
@@ -347,7 +347,7 @@ int run(int argc, char **argv)
     outputFile.close();
 
     ast->codeGen();
-    std::cout << "\n";
+    std::cout << "\nLLVM IR output:\n";
     llvmModule->print(llvm::outs(), nullptr);
 
     llvm::InitializeAllTargetInfos();
@@ -386,7 +386,7 @@ int run(int argc, char **argv)
     }
 
     llvm::legacy::PassManager pass;
-    auto fileType = llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile;
+    auto fileType = llvm::CodeGenFileType::CGFT_ObjectFile;
 
     if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType)) {
         std::cerr << "targetMachine can't emit a file of type " << fileType;
@@ -396,7 +396,7 @@ int run(int argc, char **argv)
     pass.run(*llvmModule);
     dest.flush();
 
-    std::cout << "Done" << std::endl;
+    std::cout << "\ncju compiled succesfully. Outputted output.json for AST and output.o for compliation result\n" << std::endl;
 
     return EXIT_SUCCESS;
 }

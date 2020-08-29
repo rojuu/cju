@@ -45,4 +45,4 @@ echo "[" > compile_commands.json
 find src -type f -iname "*" -exec bash -c 'export_file_to_compile_commands "$0"' {} \;
 sed -i '$ s/.$//' compile_commands.json # removes last character from file; in this case the trailing comma
 echo "]" >> compile_commands.json
-echo Done
+echo Done with compilation
