@@ -35,14 +35,14 @@ export_file_to_compile_commands()
   compile_commands_json="{
     \"directory\": \"${cwd}\",
     \"command\": \"${compile_command}\",
-    \"file\": \""$0"\"
+    \"file\": \"${cwd}/"$0"\"
   },"
   echo ${compile_commands_json} >> compile_commands.json
 }
 export -f export_file_to_compile_commands
 
 echo "[" > compile_commands.json
-find src -type f -iname "*" -exec bash -c 'export_file_to_compile_commands "$0"' {} \;
+find src -type f -iname "*.cpp" -exec bash -c 'export_file_to_compile_commands "$0"' {} \;
 sed -i '$ s/.$//' compile_commands.json # removes last character from file; in this case the trailing comma
 echo "]" >> compile_commands.json
 echo Done with compilation
