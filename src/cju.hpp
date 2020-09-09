@@ -12,7 +12,7 @@
 namespace cju
 {
 
-std::string tokenTypeToString(lexer_token_type type)
+inline std::string tokenTypeToString(lexer_token_type type)
 {
     switch(type) {
     case LEXER_TOKEN_STRING:
@@ -28,7 +28,7 @@ std::string tokenTypeToString(lexer_token_type type)
     }
 }
 
-void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, const char *msg, ...)
+inline void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, const char *msg, ...)
 {
     std::stringstream errorOutput;
     switch(logLevel) {
@@ -45,7 +45,7 @@ void lexerLogCallback(void*, enum lexer_log_level logLevel, lexer_size line, con
     std::cerr << errorOutput.str() << std::endl;
 }
 
-bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tokens)
+inline bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tokens)
 {
     lexer lexer;
     lexer.log = lexerLogCallback;
@@ -64,7 +64,7 @@ bool tokenizeFile(const std::string &fileContents, std::vector<lexer_token> &tok
     return true;
 }
 
-std::string toString(const lexer_token &token)
+inline std::string toString(const lexer_token &token)
 {
     std::string result;
     switch(token.type) {
@@ -80,7 +80,7 @@ std::string toString(const lexer_token &token)
     return result;
 }
 
-void logUnexpectedTokenAndExit(const lexer_token &token)
+inline void logUnexpectedTokenAndExit(const lexer_token &token)
 {
     std::cerr << "Unexpected token \"" << toString(token)
               << "\" on line: " << token.line
@@ -88,34 +88,34 @@ void logUnexpectedTokenAndExit(const lexer_token &token)
     exit(EXIT_FAILURE);
 }
 
-bool tokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
+inline bool tokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
 {
     bool result = token.type == tokenType;
     return result;
 }
 
-void expectTokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
+inline void expectTokenTypeEq(const lexer_token &token, lexer_token_type tokenType)
 {
     if (!tokenTypeEq(token, tokenType)) {
         logUnexpectedTokenAndExit(token);
     }
 }
 
-bool tokenEq(const lexer_token &token, const std::string &str)
+inline bool tokenEq(const lexer_token &token, const std::string &str)
 {
     std::string cmp = toString(token);
     bool result = cmp == str;
     return result;
 }
 
-void expectTokenEq(const lexer_token &token, const std::string &str)
+inline void expectTokenEq(const lexer_token &token, const std::string &str)
 {
     if (!tokenEq(token, str)) {
         logUnexpectedTokenAndExit(token);
     }
 }
 
-bool tokenIsAType(const lexer_token &token)
+inline bool tokenIsAType(const lexer_token &token)
 {
     bool isName = tokenTypeEq(token, lexer_token_type::LEXER_TOKEN_NAME);
     bool typeNameMatches = tokenEq(token, "int") || tokenEq(token, "float");
@@ -123,14 +123,14 @@ bool tokenIsAType(const lexer_token &token)
     return result;
 }
 
-void expectTokenIsAType(const lexer_token &token)
+inline void expectTokenIsAType(const lexer_token &token)
 {
     if (!tokenIsAType(token)) {
         logUnexpectedTokenAndExit(token);
     }
 }
 
-PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &index)
+inline PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &index)
 {
     // Type
     auto *token = &tokens[index];
@@ -182,7 +182,7 @@ PrototypeAST *buildPrototypeAST(const std::vector<lexer_token> &tokens, int &ind
     return proto;
 }
 
-FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index)
+inline FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index)
 {
     PrototypeAST *proto = buildPrototypeAST(tokens, index);
 
@@ -279,7 +279,7 @@ FunctionAST *buildFunctionAST(const std::vector<lexer_token> &tokens, int &index
     return func;
 }
 
-ExprAST *buildAST(const std::vector<lexer_token> &tokens)
+inline ExprAST *buildAST(const std::vector<lexer_token> &tokens)
 {
     if (tokens.size() == 0) {
         std::cerr << "Cannot build ast, found no tokens" << std::endl;
@@ -292,12 +292,12 @@ ExprAST *buildAST(const std::vector<lexer_token> &tokens)
     return ast;
 }
 
-void printUsage(const char* programName)
+inline void printUsage(const char* programName)
 {
     std::cout << "Usage: " << programName << "[file]" << std::endl;
 }
 
-int run(int argc, char **argv)
+inline int run(int argc, char **argv)
 {
     if (argc != 2) {
         std::cerr << "ERROR: Wrong number or arguments" << std::endl;
